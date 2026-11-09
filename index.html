@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portail Sécurisé & Navigateur</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .iframe-container { height: calc(100vh - 65px); }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col">
+
+    <!-- ECRAN DE CONNEXION INITIAL (Visibilité Clients Uniquement) -->
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 p-4">
+        <!-- Zone secrète invisible pour déclencher l'accès Admin -->
+        <div onclick="triggerSecretAdmin()" class="fixed top-0 left-0 w-16 h-16 z-50 cursor-pointer" title="Zone secrète Admin"></div>
+
+        <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-2xl max-w-md w-full relative z-10">
+            <div class="text-center mb-6">
+                <div class="inline-flex p-3 rounded-full bg-indigo-600/20 text-indigo-400 mb-3">
+                    <i class="fa-solid fa-shield-halved text-3xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white">Portail Sécurisé</h1>
+                <p class="text-xs text-slate-400 mt-1">Connexion exclusive aux services abonnés</p>
+            </div>
+
+            <!-- Formulaire Client Unique visibles par tous -->
+            <form id="userLoginForm" onsubmit="handleUserLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Nom d'utilisateur</label>
+                    <input type="text" id="loginUsername" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="Entrez votre nom">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Mot de passe</label>
+                    <input type="password" id="loginPassword" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-lg text-sm transition shadow-lg shadow-indigo-600/30">Se connecter</button>
+            </form>
+
+            <div id="loginError" class="mt-4 p-3 rounded-lg bg-red-900/40 border border-red-800/80 text-red-300 text-xs text-center hidden"></div>
+        </div>
+    </div>
+
+    <!-- FORMULAIRE ADMIN MASQUÉ (Débloqué secrètement) -->
+    <div id="adminSecretOverlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border border-purple-500/50 p-8 rounded-2xl shadow-2xl max-w-sm w-full relative">
+            <button onclick="hideSecretAdmin()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-user-lock text-purple-400 text-4xl mb-2"></i>
+                <h2 class="text-lg font-bold text-white">Authentification Admin</h2>
+                <p class="text-xs text-slate-400">Accès réservé au propriétaire</p>
+            </div>
+            <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+                <div>
+                    <input type="password" id="adminPasswordInput" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white text-center focus:outline-none focus:border-purple-500 font-mono" placeholder="Mot de passe maître">
+                </div>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg text-sm transition shadow-lg shadow-purple-600/30">Valider l'accès</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- INTERFACE PRINCIPALE (NAVIGATEUR) -->
+    <div id="mainApp" class="flex-1 flex flex-col hidden">
+        <header class="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <span class="text-xs font-semibold px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full flex items-center space-x-1.5">
+                    <i class="fa-solid fa-user text-xs"></i> <span id="currentUserDisplay">Client</span>
+                </span>
+            </div>
+
+            <div class="flex space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button onclick="switchTab('kool')" id="tab-kool" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-medium transition bg-indigo-600 text-white">Kool.to</button>
+                <button onclick="switchTab('geil')" id="tab-geil" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white">Geil.to</button>
+                <button onclick="switchTab('vuma')" id="tab-vuma" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-medium transition text-slate-400 hover:text-white">Vuma.mx</button>
+            </div>
+
+            <button onclick="logout()" class="text-xs text-slate-400 hover:text-red-400 px-3 py-1.5 rounded-lg transition" title="Déconnexion">
+                <i class="fa-solid fa-power-off text-base"></i>
+            </button>
+        </header>
+
+        <main class="flex-1 bg-slate-950 relative iframe-container">
+            <iframe id="webViewer" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-forms" src="https://kool.to"></iframe>
+        </main>
+    </div>
+
+    <!-- PANNEAU ADMINISTRATEUR -->
+    <div id="adminPanel" class="fixed inset-0 z-50 bg-slate-950 overflow-y-auto hidden p-4 sm:p-6">
+        <div class="max-w-6xl mx-auto space-y-6">
+            <div class="flex justify-between items-center bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-xl">
+                <div class="flex items-center space-x-3">
+                    <div class="p-3 bg-purple-500/20 text-purple-400 rounded-xl">
+                        <i class="fa-solid fa-sliders text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white">Panneau de Contrôle Administrateur</h1>
+                        <p class="text-xs text-slate-400">Gestion absolue des accès, abonnements et essais gratuits</p>
+                    </div>
+                </div>
+                <button onclick="closeAdmin()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold px-5 py-2.5 rounded-xl border border-slate-700 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-right-from-bracket"></i> <span>Quitter</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Formulaire de Création/Édition -->
+                <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 h-fit space-y-4 shadow-xl">
+                    <h2 class="text-sm font-bold text-white border-b border-slate-800 pb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-user-plus text-purple-400"></i> <span id="formTitle">Nouveau Client</span>
+                    </h2>
+                    <form id="addUserForm" onsubmit="saveUser(event)" class="space-y-4">
+                        <input type="hidden" id="editUserId">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Nom d'utilisateur</label>
+                            <input type="text" id="newUsername" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500" placeholder="Identifiant">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Mot de passe secret (Visible)</label>
+                            <input type="text" id="newPassword" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-purple-500" placeholder="Code secret">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Type d'Accès & Durée</label>
+                            <select id="subDuration" onchange="toggleCustomDuration()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                                <optgroup label="✨ Essais Gratuits">
+                                    <option value="test_30m">Essai : 30 Minutes</option>
+                                    <option value="test_1h">Essai : 1 Heure</option>
+                                    <option value="test_2h">Essai : 2 Heures</option>
+                                </optgroup>
+                                <optgroup label="📅 Abonnements Standards">
+                                    <option value="1">1 Mois</option>
+                                    <option value="2">2 Mois</option>
+                                    <option value="3">3 Mois</option>
+                                    <option value="6">6 Mois</option>
+                                    <option value="12">1 An</option>
+                                    <option value="unlimited">Accès Illimité</option>
+                                </optgroup>
+                                <optgroup label="⚙️ Personnalisé">
+                                    <option value="custom">Autre (Heures / Minutes)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Champs Personnalisé Heures/Minutes -->
+                        <div id="customDurationFields" class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 hidden">
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">Heures</label>
+                                <input type="number" id="customHours" min="0" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">Minutes</label>
+                                <input type="number" id="customMinutes" min="0" max="59" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white text-center">
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex gap-2">
+                            <button type="submit" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-purple-600/30">Enregistrer</button>
+                            <button type="button" onclick="resetUserForm()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 px-4 rounded-xl text-xs font-semibold">Annuler</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Liste des Comptes Utilisateurs -->
+                <div class="lg:col-span-2 bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+                    <h2 class="text-sm font-bold text-white border-b border-slate-800 pb-3 flex justify-between items-center">
+                        <span>Gestion des Comptes Actifs</span>
+                        <span id="userCountBadge" class="text-xs px-2.5 py-0.5 bg-slate-800 text-slate-400 rounded-full font-mono">0</span>
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Client</th>
+                                    <th class="p-3">Mot de Passe</th>
+                                    <th class="p-3">Fin de l'Accès (Date & Heure)</th>
+                                    <th class="p-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userTableBody" class="divide-y divide-slate-800">
+                                <!-- Données chargées dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION SECRÈTE
+        const MASTER_ADMIN_PASS = "admin123"; // Vous pourrez modifier ce mot de passe maître ici
+        const SITES = {
+            kool: "https://kool.to",
+            geil: "https://geil.to",
+            vuma: "https://vuma.mx"
+        };
+
+        // GESTION DU STOCKAGE ET DES DATES
+        function getUsers() {
+            const data = localStorage.getItem('secure_app_users_v2');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveUsersToStorage(users) {
+            localStorage.setItem('secure_app_users_v2', JSON.stringify(users));
+        }
+
+        function calculateExpiryDate(type, customHours = 0, customMinutes = 0) {
+            const now = new Date();
+            if (type === 'unlimited') return 'unlimited';
+            if (type === 'test_30m') return new Date(now.getTime() + 30 * 60000).toISOString();
+            if (type === 'test_1h') return new Date(now.getTime() + 60 * 60000).toISOString();
+            if (type === 'test_2h') return new Date(now.getTime() + 120 * 60000).toISOString();
+            if (type === 'custom') {
+                const totalMs = (parseInt(customHours) * 3600000) + (parseInt(customMinutes) * 60000);
+                return new Date(now.getTime() + totalMs).toISOString();
+            }
+            
+            // Calcul mensuel ou annuel
+            const monthsToAdd = parseInt(type);
+            const futureDate = new Date(now);
+            futureDate.setMonth(futureDate.getMonth() + monthsToAdd);
+            return futureDate.toISOString();
+        }
+
+        function formatExpiryDisplay(expiryISO) {
+            if (expiryISO === 'unlimited') return '<span class="font-bold text-amber-400"><i class="fa-solid fa-infinity mr-1"></i> Illimité</span>';
+            const exp = new Date(expiryISO);
+            const now = new Date();
+            const isExpired = exp < now;
+            
+            const dateStr = exp.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const timeStr = exp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            
+            if (isExpired) {
+                return `<span class="text-rose-400 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Expiré le ${dateStr} à ${timeStr}</span>`;
+            }
+            return `<span class="text-emerald-400 font-semibold">${dateStr} à ${timeStr}</span>`;
+        }
+
+        // DÉCLENCHEMENT SECRET DU PANNEAU ADMIN
+        function triggerSecretAdmin() {
+            document.getElementById('adminSecretOverlay').classList.remove('hidden');
+            document.getElementById('adminPasswordInput').focus();
+        }
+
+        function hideSecretAdmin() {
+            document.getElementById('adminSecretOverlay').classList.add('hidden');
+            document.getElementById('adminPasswordInput').value = '';
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('adminPasswordInput').value;
+            if (pass === MASTER_ADMIN_PASS) {
+                hideSecretAdmin();
+                document.getElementById('adminPanel').classList.remove('hidden');
+                renderUserTable();
+            } else {
+                alert("Accès refusé.");
+                document.getElementById('adminPasswordInput').value = '';
+            }
+        }
+
+        // AUTHENTICATION CLIENT & RESTRICTION
+        function handleUserLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const pass = document.getElementById('loginPassword').value.trim();
+            const err = document.getElementById('loginError');
+
+            const users = getUsers();
+            const user = users.find(u => u.username === username && u.password === pass);
+
+            if (!user) {
+                showError("Identifiant ou mot de passe incorrect.");
+                return;
+            }
+
+            // Vérification stricte de l'expiration
+            if (user.expiry !== 'unlimited' && new Date(user.expiry) < new Date()) {
+                showError("Votre accès est expiré. Veuillez contacter l'administrateur.");
+                return;
+            }
+
+            err.classList.add('hidden');
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('currentUserDisplay').innerText = user.username;
+
+            switchTab('kool');
+        }
+
+        function showError(msg) {
+            const err = document.getElementById('loginError');
+            err.innerText = msg;
+            err.classList.remove('hidden');
+        }
+
+        function logout() {
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function closeAdmin() {
+            document.getElementById('adminPanel').classList.add('hidden');
+        }
+
+        // GESTION DU FORMULAIRE ADMIN
+        function toggleCustomDuration() {
+            const select = document.getElementById('subDuration');
+            const customFields = document.getElementById('customDurationFields');
+            if (select.value === 'custom') {
+                customFields.classList.remove('hidden');
+            } else {
+                customFields.classList.add('hidden');
+            }
+        }
+
+        // MOTEUR CRUD ADMINISTRATEUR
+        function renderUserTable() {
+            const users = getUsers();
+            const tbody = document.getElementById('userTableBody');
+            document.getElementById('userCountBadge').innerText = users.length;
+            tbody.innerHTML = '';
+
+            users.forEach(u => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-950/40 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-white">${u.username}</td>
+                    <td class="p-3 font-mono text-purple-300 select-all">${u.password}</td>
+                    <td class="p-3">${formatExpiryDisplay(u.expiry)}</td>
+                    <td class="p-3 text-right space-x-2">
+                        <button onclick="editUser('${u.id}')" class="p-1.5 text-slate-400 hover:text-white rounded-lg bg-slate-800 transition" title="Modifier"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button onclick="deleteUser('${u.id}')" class="p-1.5 text-slate-400 hover:text-red-400 rounded-lg bg-slate-800 transition" title="Supprimer"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function saveUser(e) {
+            e.preventDefault();
+            const id = document.getElementById('editUserId').value;
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
+            const durationType = document.getElementById('subDuration').value;
+            const hours = document.getElementById('customHours').value;
+            const minutes = document.getElementById('customMinutes').value;
+
+            let users = getUsers();
+
+            if (id) {
+                // Modification d'un utilisateur existant
+                users = users.map(u => {
+                    if (u.id === id) {
+                        return { 
+                            ...u, 
+                            username, 
+                            password, 
+                            expiry: durationType === 'keep' ? u.expiry : calculateExpiryDate(durationType, hours, minutes) 
+                        };
+                    }
+                    return u;
+                });
+            } else {
+                // Création d'un nouvel utilisateur
+                const newUser = {
+                    id: Date.now().toString(),
+                    username,
+                    password,
+                    expiry: calculateExpiryDate(durationType, hours, minutes)
+                };
+                users.push(newUser);
+            }
+
+            saveUsersToStorage(users);
+            renderUserTable();
+            resetUserForm();
+        }
+
+        function editUser(id) {
+            const users = getUsers();
+            const user = users.find(u => u.id === id);
+            if (!user) return;
+
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('newUsername').value = user.username;
+            document.getElementById('newPassword').value = user.password;
+            document.getElementById('formTitle').innerText = "Modifier le Client";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteUser(id) {
+            if (confirm("Supprimer définitivement cet accès client ?")) {
+                let users = getUsers();
+                users = users.filter(u => u.id !== id);
+                saveUsersToStorage(users);
+                renderUserTable();
+            }
+        }
+
+        function resetUserForm() {
+            document.getElementById('editUserId').value = '';
+            document.getElementById('addUserForm').reset();
+            document.getElementById('formTitle').innerText = "Nouveau Client";
+            document.getElementById('customDurationFields').classList.add('hidden');
+        }
+
+        // GESTION DU NAVIGATEUR INTERNE RESTREINT
+        function switchTab(siteKey) {
+            const iframe = document.getElementById('webViewer');
+            const targetUrl = SITES[siteKey];
+            iframe.src = targetUrl;
+
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('bg-indigo-600', 'text-white');
+                b.classList.add('text-slate-400');
+            });
+
+            const activeBtn = document.getElementById(`tab-${siteKey}`);
+            activeBtn.classList.add('bg-indigo-600', 'text-white');
+            activeBtn.classList.remove('text-slate-400');
+        }
+
+        // Initialisation de la table au chargement si admin déjà ouvert
+        window.onload = () => {
+            if(document.getElementById('adminPanel').classList.contains('hidden') === false) {
+                renderUserTable();
+            }
+        };
+    </script>
+</body>
+</html>
